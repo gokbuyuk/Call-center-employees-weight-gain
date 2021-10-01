@@ -1,0 +1,162 @@
+---
+title: "Practicum 1"
+author: "Gokcen Buyukbas"
+date: "9/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache=TRUE, autodep=TRUE, cache.comments=FALSE,
+               message=FALSE, warning=FALSE)
+
+rm(list=ls())
+setwd("C:/Users/Gokcen/Desktop/Fall 21/S690-Statistical Consulting/Practicum 1")
+```
+
+### Libraries
+```{r, message=FALSE, echo=FALSE, warning=FALSE}
+library(dplyr)
+library(psych)
+library(mgcv)
+library(ResourceSelection)
+library(mgcv)
+library(alr4)
+library(tidyverse)
+library(pscl)
+library(randomForest)
+library(reshape2)
+library(lme4)
+library(ROCR)
+library(pbkrtest)
+library(RLRsim)
+library(kableExtra)
+library(magick)
+library(htmlTable)
+library(MASS)
+library(plyr)
+
+library(corrplot) #corrplot()
+
+library(gridExtra)
+library(grid)
+library(ggplot2)
+library(lattice)
+library(hrbrthemes)
+library(viridis)
+library(ggthemes)
+library(ggpubr)
+theme_set(
+  theme_minimal() +
+    theme(legend.position = "top")
+  )
+library(ggpmisc)
+```
+
+```{r}
+data = read.csv(file = 's690_p1_cleaneddata.csv')
+
+data$gender = as.factor(data$gender)
+data$shift = as.factor(data$shift)
+data$weightgain = as.factor(data$weightgain)
+levels(data$gender) = list(Female  = "0", Male = "1")
+
+early_morning = c("7am", "8am" )
+mid_morning = c("9am", "10am", "11am")
+early_afternoon = c("12pm", "1pm", "2pm")
+other = c("other")
+
+data = mutate(data, shift2 = factor(case_when(shift %in% early_morning ~ "early_morning", shift %in% mid_morning ~ "mid_morning", shift %in% early_afternoon ~ "early_afternoon", shift %in% other ~ "other")))
+
+summary(data)
+```
+
+### correlation matrix
+```{r}
+data$log_pg = data$pounds_gained
+vars = c("log_pg", "Age", "BMI", "WalkexTime","Modextime", "VigexTime", "Total_Met_Min")
+cor=round(cor(data[vars], method = "pearson", use = "complete.obs"),2)
+
+colnames(cor) <- c("Pounds gained", "Age", "BMI", "Walk ex time", "Mod ex time", "Vig ex time", "Total met ex")
+rownames(cor) <- c("Pounds gained", "Age", "BMI", "Walk ex time", "Mod ex time", "Vig ex time", "Total met ex")
+
+
+corrplot(cor)
+```
+### Pounds gained vs Gender
+```{r}
+p = ggplot(data, aes(x=pounds_gained, color=gender))+ geom_density(alpha=0.4) +
+  geom_histogram(aes(y=..density..),fill="white", position="dodge", bins = 40, alpha=0.5)+ 
+  theme(legend.position="right")+scale_color_manual(values=c("red", "blue")) +xlab("Pounds gained") + ylab("Density") + ylim(0,0.24)
+p
+```
+
+
+### Pounds gained vs Age 
+```{r}
+p1 = ggplot(data = na.omit(data), mapping = aes(x = Age, fill = weightgain)) +
+    geom_histogram(bin=40, aplha=0.2, position = "dodge2") + geom_density(alpha=.5)+ scale_color_brewer(palette="Accent") + theme_minimal() +scale_x_log10()+xlab("Age") +ylab("Count")
+p2 = ggplot(data = na.omit(data), aes(x =pounds_gained, color = gender)) + geom_density(alpha=0.4) +xlab("Pounds gained") +ylab("Density")
+
+p3 = ggplot(data, aes(Age, pounds_gained, col=gender)) +
+  geom_point(position = position_jitter(width= 0.2, height = 0), size = 2)
+  
+grid.arrange(p1, p2, ncol = 2)
+```
+The distribution of age seems to be very similar for people who gained weight and who didn't. Gender doesn't seem to be differ either.
+
+```{r}
+ggplot(data = data[data$gender %in% c("Female","Male"),], aes(x=Age, y=pounds_gained, fill=gender)) + 
+  geom_col(position=position_dodge()) + 
+  labs( x= "Age", y = "Pounds gained")
+```
+```{r}
+ggplot(data = data, aes(x =Age, y=pounds_gained)) +  geom_point(alpha = 0.5) + labs(x="Age", y = "Log(Pounds gained)") +scale_y_log10()
+```
+
+
+### Pounds gained vs Shift
+```{r}
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+p1 = ggplot(data = na.omit(data), mapping = aes(x = shift2, y=pounds_gained, fill = gender)) + geom_boxplot( alpha=.4) +scale_y_log10() +xlab("Shift") +ylab("Pound gained")+  scale_color_manual(values = c("red", "blue"))
+
+p4 = ggplot(data = na.omit(data), aes(x=pounds_gained, group=shift2, color=shift2)) + geom_density(adjust=1.5, alpha=.4) +scale_x_log10() +ylab("Density") +xlab("Pounds gained")+ scale_color_manual(values = c("red", "blue", "orange", "magenta"))
+# change the labels to full names
+grid.arrange(p1, p4, nrow = 2)
+```
+
+We grouped the shifts to *early morning*, *mid morning*, *early afternoon* and *other*.
+People in early morning shifts have gained more weight than later shifts. 
+
+```{r}
+p2 = ggplot(data = data, mapping = aes(x = gender, y = pounds_gained)) +
+    geom_density()
+p3 = ggplot(data = data, aes(x =pounds_gained, fill = gender)) + 
+geom_density(alpha = 0.3)
+```
+
+
+```{r}
+hist(data$Age,breaks=50)
+hist(data$BMI, breaks = 30)
+hist((data$pounds_gained), breaks = 30)
+```
+
+### Pounds gained vs Exercise time
+```{r}
+p1 = ggplot(data = data, aes(x =WalkexTime, y=pounds_gained)) +  geom_point(alpha = 0.5) +scale_x_log10()+scale_y_log10() + labs(x="Walking exercise time", y = "Pounds gained")
+
+p2 = ggplot(data = data, aes(x =Modextime, y=pounds_gained)) +  geom_point(alpha = 0.5) +scale_x_log10()+scale_y_log10()  + labs(x="Moderate exercise time", y = "Pounds gained")
+
+p3 = ggplot(data = data, aes(x =VigexTime, y=pounds_gained)) +  geom_point(alpha = 0.5) +scale_x_log10() +scale_y_log10() + labs(x="Vigorous exercise time", y = "Pounds gained")
+
+p4 = ggplot(data = data, aes(x =Total_Met_Min, y=pounds_gained)) +  geom_point(alpha = 0.5) +scale_x_log10() +scale_y_log10() + labs(x="Total exercise time", y = "Pounds gained")
+      
+grid.arrange(p1, p2, p3, p4, nrow = 2, bottom=textGrob("All variables in logaritmic scale"))
+```
+
+### Pounds gained vs BMI 
+```{r}
+ggplot(data = data, aes(x =BMI, y=pounds_gained)) +  geom_point(alpha = 0.5) + labs(x="BMI", y = "Log(Pounds gained)") +scale_y_log10()
+      
+```
+

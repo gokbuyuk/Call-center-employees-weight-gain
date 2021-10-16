@@ -8,9 +8,7 @@ output: html_document
 ```{r setup, include=FALSE, message=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache=TRUE, autodep=TRUE, cache.comments=FALSE,
                message=FALSE, warning=FALSE)
-
 rm(list=ls())
-setwd("C:/Users/Gokcen/Desktop/Fall 21/S690-Statistical Consulting/Practicum 1")
 ```
 
 ### Libraries

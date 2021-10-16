@@ -1,5 +1,5 @@
 ---
-title: "Practicum 1"
+title: "Call center-EDA"
 author: "Gokcen Buyukbas"
 date: "9/8/2021"
 output: html_document
@@ -15,32 +15,13 @@ setwd("C:/Users/Gokcen/Desktop/Fall 21/S690-Statistical Consulting/Practicum 1")
 
 ### Libraries
 ```{r, message=FALSE, echo=FALSE, warning=FALSE}
-library(dplyr)
 library(psych)
 library(mgcv)
-library(ResourceSelection)
-library(mgcv)
-library(alr4)
 library(tidyverse)
-library(pscl)
-library(randomForest)
-library(reshape2)
-library(lme4)
-library(ROCR)
-library(pbkrtest)
-library(RLRsim)
-library(kableExtra)
-library(magick)
-library(htmlTable)
 library(MASS)
-library(plyr)
-
 library(corrplot) #corrplot()
-
 library(gridExtra)
-library(grid)
 library(ggplot2)
-library(lattice)
 library(hrbrthemes)
 library(viridis)
 library(ggthemes)
@@ -54,12 +35,15 @@ library(ggpmisc)
 
 ```{r}
 data = read.csv(file = 's690_p1_cleaneddata.csv')
+categorical = c("gender", "shift", "weightgain")
 
-data$gender = as.factor(data$gender)
-data$shift = as.factor(data$shift)
-data$weightgain = as.factor(data$weightgain)
+for (var in names(data)){
+  if (var %in% categorical){
+    data[,var] = as.factor(data[,var])
+  }
+ }
+
 levels(data$gender) = list(Female  = "0", Male = "1")
-
 early_morning = c("7am", "8am" )
 mid_morning = c("9am", "10am", "11am")
 early_afternoon = c("12pm", "1pm", "2pm")
